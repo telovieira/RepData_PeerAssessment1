@@ -1,25 +1,102 @@
----
-title: "Reproducible Research: Peer Assessment 1"
-output: 
-  html_document:
-    keep_md: true
----
+```{r}
+# Load package
+library(dplyr)
+library(ggplot2)
+library(knitr)
 
 
-## Loading and preprocessing the data
+setwd("D:\\projetos\\data-science\\Reproducible Research\\week2")
 
+# Load data
+if(!exists("NEI")){
+  AM <- read.csv("activity.csv")
+}
 
+####  What is mean total number of steps taken per day? #####
+# Remove NA from data
+AM1 <- AM[!(is.na(AM$steps)),]
+head(AM1,10)
+## Calculate the total number of steps taken per day
+g <- group_by(AM1, date)
+step_day <- summarise(g, total = sum(steps))
+step_day
+# Histogram of the total number of steps taken each day
+hist(step_day$total, main = "Steps taken per day", xlab = "Steps")
+# Mean and median number of steps taken each day
+summary(step_day)
 
-## What is mean total number of steps taken per day?
+#### What is the average daily activity pattern? ####
+# steps by interval
+si <- aggregate(steps ~ interval, AM1, mean)
 
+# plot 
+plot(si$interval, si$steps, type='l', 
+     main="Average number of steps over all days", xlab="Interval", 
+     ylab="Average number of steps")
 
+#### Imputing missing values ####
+# 1. Calculate and report the total number of missing values in the dataset 
+# (i.e. the total number of rows with s)
+row.na <- nrow(AM[is.na(AM),])
+row.na
+# 2.  Devise a strategy for filling in all of the missing values in the dataset. 
+# The strategy does not need to be sophisticated. For example, you could use 
+# the mean/median for that day, or the mean for that 5-minute interval, etc.
+newAM <- AM
+for(i in 1:nrow(newAM))
+  {
+    if (is.na(dt$steps[i])) {
+      newAM$steps[i] <- si[si$interval == newAM$interval[i],]$steps 
+  }
+}
 
-## What is the average daily activity pattern?
+# 3. Create a new dataset that is equal to the original dataset but with the missing 
+# data filled in.
+head(newAM)
 
+# 4. Make a histogram of the total number of steps taken each day and Calculate and report 
+# the mean and median total number of steps taken per day. Do these values differ from the 
+# estimates from the first part of the assignment? What is the impact of imputing missing 
+# data on the estimates of the total daily number of steps?
 
+# Calculate the total number of steps taken per day (missing value filled in)
+new_g <- group_by(newAM, date)
+new_step_day <- summarise(new_g, total = sum(steps))
+new_step_day
+# Histogram of the total number of steps taken each day (missing value filled in)
+hist(new_step_day$total, main = "Steps taken per day", xlab = "Steps")
+# Mean and median number of steps taken each day
+summary(new_step_day)
 
-## Imputing missing values
+#compare both
+par(mfrow = c(1,2))
+rng <- c(0,35)
+hist(step_day$total, main = "Steps taken per day", xlab = "Steps", ylim = rng)
+hist(new_step_day$total, main = "Steps taken per day (missing value filled in)", xlab = "Steps", ylim = rng)
 
+#### Are there differences in activity patterns between weekdays and weekends? ####
+# Create a new factor variable in the dataset with two levels - "weekday" and "weekend" 
+# indicating whether a given date is a weekday or weekend day.
+Sys.setlocale("LC_TIME","English")
+newAM$week <- weekdays(as.Date(newAM$date), abbreviate = TRUE)
+newAM$week[newAM$week %in% c("Mon","Tue","Wed","Thu","Fri")] <- "weekday"
+newAM$week[newAM$week %in% c("Sat","Sun")] <- "weekend"
+head(newAM)
 
+# steps by interval
+si <- aggregate(steps ~ interval + week, newAM, mean)
 
-## Are there differences in activity patterns between weekdays and weekends?
+# plot 
+par(mfrow = c(1,1))
+plot(si$interval, si$steps, type='l', 
+     main="Average number of steps over weekday or weekend days", xlab="Interval", 
+     ylab="Average number of steps")
+with(subset(si, week == "weekday"), points(interval, steps, col = "blue", type = "l"))
+with(subset(si, week == "weekend"), points(interval, steps, col = "red", type = "l"))
+legend("topright", col = c("blue", "red"), legend = c("Weekday", "Weekend"), lty = 1)
+
+# alternative plot
+qplot(interval, steps, data = si, facets = .~week, geom = "line",
+      main="Average number of steps over weekday or weekend days",
+      ylab="Average number of steps")
+```
